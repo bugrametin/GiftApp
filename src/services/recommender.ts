@@ -1,3 +1,6 @@
++16
+-24
+
 import type { Recommendation } from "../components/ProductCard";
 import { buildSearchUrl } from "./linkBuilder";
 import catalog from "./mockCatalog";
@@ -23,12 +26,17 @@ type Scored = {
   };
 };
 
-function normalizeTokens(s: string): string[] {
-  return (s || "")
+function normalizeTokens(raw: string): string[] {
+  const base = (raw || "")
     .toLowerCase()
     .split(/[,\n]/g) // split by comma or newline
     .map((x) => x.trim())
     .filter(Boolean);
+
+  // Also include individual words for multi-word tokens ("outdoor camping" -> outdoor, camping)
+  const words = base.flatMap((token) => token.split(/\s+/g)).filter(Boolean);
+
+  return Array.from(new Set([...base, ...words]));
 }
 
 function containsAny(haystack: string, needles: string[]) {
@@ -39,18 +47,9 @@ function containsAny(haystack: string, needles: string[]) {
 // Budget closeness score: 0..1 (1 = perfect)
 function budgetCloseness(price: number, budget: number): number {
   if (!budget || budget <= 0) return 0.4; // fallback if budget missing
-  const ratio = price / budget;
-
-  // Ideal: price <= budget and close to it
-  if (ratio <= 1) {
-    // price 0..budget => closeness increases as it approaches budget
-    return 0.6 + 0.4 * ratio; // 0.6..1.0
-  }
-
-  // Over budget: penalize fast
-  const over = ratio - 1; // 0..inf
-  const penalty = Math.min(1, over); // cap
-  return Math.max(0, 0.6 - 0.6 * penalty); // 0..0.6
+  const diffRatio = Math.min(1, Math.abs(price - budget) / budget); // 0..1
+  const penalty = diffRatio * (price > budget ? 1.1 : 0.8); // harsher when over budget
+  return Math.max(0, 1 - penalty);
 }
 
 function buildReason(opts: {
@@ -84,12 +83,8 @@ function buildReason(opts: {
 }
 
 export function recommendLocal(form: GiftFormPayload): { recommendations: Recommendation[] } {
-  const interestTokens = normalizeTokens(form.interests);
-  const avoidTokens = normalizeTokens(form.avoid);
-
-  // Expand tokens a bit: allow single words
-  const interestWords = interestTokens.flatMap((t) => t.split(/\s+/g)).filter(Boolean);
-  const avoidWords = avoidTokens.flatMap((t) => t.split(/\s+/g)).filter(Boolean);
+  const interestTerms = normalizeTokens(form.interests);
+  const avoidTerms = normalizeTokens(form.avoid);
 
   const scored: Scored[] = catalog.map((p) => {
     const title = p.title.toLowerCase();
@@ -98,16 +93,16 @@ export function recommendLocal(form: GiftFormPayload): { recommendations: Recomm
     // Interest hits: token appears in tags or title
     const interestHits = Array.from(
       new Set([
-        ...interestWords.filter((t) => tags.includes(t)),
-        ...containsAny(title, interestWords),
+        ...interestTerms.filter((t) => tags.includes(t)),
+        ...containsAny(title, interestTerms),
       ])
     );
 
     // Avoid hits: token appears in title or tags
     const avoidHits = Array.from(
       new Set([
-        ...avoidWords.filter((t) => tags.includes(t)),
-        ...containsAny(title, avoidWords),
+        ...avoidTerms.filter((t) => tags.includes(t)),
+        ...containsAny(title, avoidTerms),
       ])
     );
 
