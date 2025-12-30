@@ -1,9 +1,9 @@
 // src/data/giftAPI.js
 
 
-const API_KEY = ""; 
+const API_KEY = "AIzaSyD-XXXXXXXXXXXXXXXX"; 
 
-const CX = "" ; 
+const CX = "YOUR_CUSTOM_SEARCH_ENGINE_ID"; 
 
 export const fetchGiftsFromGoogle = async (query) => {
   try {

@@ -1,7 +1,7 @@
 // src/data/openaiAPI.js
 
 
-const OPENAI_KEY = ''; 
+const OPENAI_KEY = 'YOUR_OPENAI_API_KEY_HERE'; 
 
 export const getGiftSuggestion = async (gender, budget, category, details) => {
   try {

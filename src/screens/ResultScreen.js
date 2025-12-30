@@ -1,49 +1,47 @@
 // src/screens/ResultScreen.js
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Linking, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
 import { fetchGiftsFromGoogle } from '../data/giftAPI';
-// DÜZELTME BURADA: Doğru fonksiyon ismini çağırıyoruz
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getGiftSuggestion } from '../data/openaiAPI';
 
 export default function ResultScreen({ route }) {
-  const { gender = 'unisex', budget = '0', category = 'Genel', details = '' } = route.params || {};
+  const { gender = 'unisex', budget = '0', category = 'Genel', details = '', darkMode = false } = route.params || {};
   
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [aiSuggestion, setAiSuggestion] = useState(null);
 
+  // Tema Renkleri
+  const theme = {
+    bg: darkMode ? '#1e272e' : '#f4f6f8',
+    card: darkMode ? '#485460' : '#fff',
+    text: darkMode ? '#d2dae2' : '#2c3e50',
+    subText: darkMode ? '#d2dae2' : '#95a5a6'
+  };
+
   useEffect(() => {
     const doSmartSearch = async () => {
         try {
-            // 1. Önce OpenAI'a sor
-            // DÜZELTME BURADA: getGiftSuggestion kullanıyoruz
             const suggestion = await getGiftSuggestion(gender, budget, category, details);
-            
             let query = "";
             
             if (suggestion) {
                 setAiSuggestion(suggestion);
-                // Google'da aranacak kelime: "Galatasaray Logolu 3D Gece Lambası satın al"
                 query = `${suggestion} satın al`;
             } else {
-                // AI cevap vermezse B planı
                 query = `${gender} ${category} ${details} hediye`;
             }
 
-            console.log("🔎 Google'da aranıyor:", query);
-            
-            // 2. Google'dan ürünleri çek
+            console.log("🔎 Aranıyor:", query);
             const data = await fetchGiftsFromGoogle(query);
             setResults(data);
-
-            // 3. Geçmişe Kaydet
-            const saveText = suggestion ? `🤖 ${suggestion}` : `${category} ${details}`;
+            
+            const saveText = suggestion ? `🤖 AI: ${suggestion}` : `${category} ${details}`;
             saveToHistory(saveText, data.length);
 
         } catch (error) {
-            console.error("Genel Hata:", error);
+            console.error("Hata:", error);
         } finally {
             setLoading(false);
         }
@@ -52,45 +50,42 @@ export default function ResultScreen({ route }) {
   }, []);
 
   const saveToHistory = async (summary, count) => {
-      const historyItem = { id: Date.now().toString(), date: new Date().toLocaleDateString('tr-TR'), summary: summary, count: count };
       try {
+          const historyItem = { id: Date.now().toString(), date: new Date().toLocaleDateString('tr-TR'), summary: summary, count: count };
           const oldHistory = await AsyncStorage.getItem('history');
           const newHistory = oldHistory ? JSON.parse(oldHistory) : [];
           newHistory.unshift(historyItem);
           await AsyncStorage.setItem('history', JSON.stringify(newHistory));
-      } catch(e) { console.log(e); }
+      } catch(e) {}
   };
 
   const addToFavorites = async (item) => {
     try {
         const oldFavs = await AsyncStorage.getItem('favorites');
         let newFavs = oldFavs ? JSON.parse(oldFavs) : [];
-        const exists = newFavs.find(f => f.link === item.link);
-        if (exists) { Alert.alert("Zaten Ekli", "Bu ürün favorilerinizde var."); return; }
+        if (newFavs.find(f => f.link === item.link)) { Alert.alert("Zaten Ekli", "Favorilerde var."); return; }
         newFavs.unshift(item);
         await AsyncStorage.setItem('favorites', JSON.stringify(newFavs));
-        Alert.alert("Başarılı", "Favorilere eklendi! ❤️");
-    } catch (e) { console.error(e); }
+        Alert.alert("Başarılı", "Eklendi! ❤️");
+    } catch (e) {}
   };
 
   if (loading) {
       return (
-        <View style={styles.center}>
+        <View style={[styles.center, { backgroundColor: theme.bg }]}>
             <ActivityIndicator size="large" color="#3498db"/>
-            <Text style={{marginTop: 10, color: '#555', textAlign:'center'}}>
-                Yapay Zeka en yaratıcı hediyeyi düşünüyor... 🤔
-            </Text>
+            <Text style={{marginTop: 10, color: theme.text}}>Yapay Zeka hediye seçiyor...</Text>
         </View>
       );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       
       {aiSuggestion && (
-          <View style={styles.aiBox}>
-              <Text style={styles.aiLabel}>✨ Yapay Zeka Önerisi:</Text>
-              <Text style={styles.aiText}>{aiSuggestion}</Text>
+          <View style={[styles.aiBox, { borderColor: darkMode ? '#fff' : '#3498db', backgroundColor: darkMode ? '#2d3436' : '#e8f6fd' }]}>
+              <Text style={[styles.aiLabel, { color: theme.text }]}>✨ Yapay Zeka Önerisi:</Text>
+              <Text style={[styles.aiText, { color: theme.text }]}>{aiSuggestion}</Text>
           </View>
       )}
 
@@ -98,13 +93,13 @@ export default function ResultScreen({ route }) {
         data={results}
         keyExtractor={(item, index) => item.id || index.toString()}
         contentContainerStyle={{padding: 15}}
-        ListEmptyComponent={<Text style={styles.emptyText}>Sonuç bulunamadı.</Text>}
+        ListEmptyComponent={<Text style={{textAlign:'center', marginTop:50, color: theme.subText}}>Sonuç bulunamadı.</Text>}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
             <Image source={{ uri: item.image }} style={styles.image} resizeMode="contain" />
             <View style={styles.info}>
-                <Text style={styles.source}>{item.source}</Text>
-                <Text style={styles.title} numberOfLines={2}>{item.name}</Text>
+                <Text style={[styles.source, { color: theme.subText }]}>{item.source}</Text>
+                <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{item.name}</Text>
                 
                 <View style={styles.btnRow}>
                     <TouchableOpacity style={styles.linkBtn} onPress={() => item.link && Linking.openURL(item.link)}>
@@ -123,20 +118,19 @@ export default function ResultScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6f8' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  aiBox: { backgroundColor: '#e8f6fd', padding: 15, margin: 15, marginBottom: 5, borderRadius: 12, borderWidth: 1, borderColor: '#3498db', alignItems: 'center' },
-  aiLabel: { color: '#2980b9', fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
-  aiText: { color: '#2c3e50', fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
-  card: { flexDirection: 'row', backgroundColor: 'white', marginBottom: 12, borderRadius: 12, padding: 10, elevation: 2 },
+  container: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  aiBox: { padding: 15, margin: 15, marginBottom: 5, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
+  aiLabel: { fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
+  aiText: { fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
+  card: { flexDirection: 'row', marginBottom: 12, borderRadius: 12, padding: 10, elevation: 2 },
   image: { width: 90, height: 90, borderRadius: 8, marginRight: 15, backgroundColor: '#f0f0f0' },
   info: { flex: 1, justifyContent: 'space-between', paddingVertical: 5 },
-  title: { fontWeight: '600', fontSize: 14, color: '#2c3e50', marginBottom: 5 },
-  source: { color: '#95a5a6', fontSize: 12, fontWeight: '500' },
+  title: { fontWeight: '600', fontSize: 14, marginBottom: 5 },
+  source: { fontSize: 12, fontWeight: '500' },
   btnRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
   linkBtn: { padding: 5 },
   linkText: { color: '#3498db', fontWeight: 'bold', fontSize: 14 },
   favBtn: { backgroundColor: '#ffebee', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15 },
-  favText: { color: '#e91e63', fontSize: 12, fontWeight: 'bold' },
-  emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#7f8c8d' }
+  favText: { color: '#e91e63', fontSize: 12, fontWeight: 'bold' }
 });

@@ -1,37 +1,38 @@
 // src/screens/HistoryScreen.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native'; // YENİ: Bu kütüphaneyi ekledik
-import { useCallback, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function HistoryScreen() {
+export default function HistoryScreen({ route, navigation }) {
+  // HomeScreen'den gelen darkMode bilgisini alıyoruz
+  const { darkMode = false } = route.params || {};
   const [history, setHistory] = useState([]);
 
-  // YENİ: Sayfa her odaklandığında (açıldığında) burası çalışır
-  useFocusEffect(
-    useCallback(() => {
-      loadHistory();
-    }, [])
-  );
+  // Tema Ayarları
+  const theme = {
+    bg: darkMode ? '#1e272e' : '#f4f6f8',
+    card: darkMode ? '#485460' : '#fff',
+    text: darkMode ? '#d2dae2' : '#2c3e50',
+    date: darkMode ? '#bdc3c7' : '#95a5a6',
+    emptyText: darkMode ? '#808e9b' : '#bdc3c7'
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   const loadHistory = async () => {
-    try {
-      const data = await AsyncStorage.getItem('history');
-      if (data) {
-        setHistory(JSON.parse(data));
-      }
-    } catch (error) {
-      console.error("Geçmiş yüklenirken hata:", error);
-    }
+    const data = await AsyncStorage.getItem('history');
+    if(data) setHistory(JSON.parse(data));
   };
 
   const clearHistory = async () => {
       Alert.alert(
-          "Temizle", 
-          "Tüm geçmiş silinecek, emin misin?",
+          "Geçmişi Temizle", 
+          "Tüm arama kayıtları silinsin mi?",
           [
               { text: "Vazgeç", style: "cancel" },
-              { text: "Sil", style: "destructive", onPress: async () => {
+              { text: "Evet, Sil", style: "destructive", onPress: async () => {
                   await AsyncStorage.removeItem('history');
                   setHistory([]);
               }}
@@ -40,46 +41,58 @@ export default function HistoryScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      
+      {/* Üst Başlık ve Temizle Butonu */}
       <View style={styles.headerRow}>
-          <Text style={styles.title}>Arama Geçmişi</Text>
+          <Text style={[styles.title, { color: theme.text }]}>📜 Son Aramalar</Text>
           {history.length > 0 && (
-              <TouchableOpacity onPress={clearHistory}>
-                  <Text style={styles.clearBtn}>Temizle</Text>
+              <TouchableOpacity onPress={clearHistory} style={styles.clearBtn}>
+                  <Text style={styles.clearBtnText}>Temizle 🗑️</Text>
               </TouchableOpacity>
           )}
       </View>
 
       <FlatList
         data={history}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={{paddingBottom: 20}}
-        ListEmptyComponent={<Text style={styles.empty}>Henüz geçmiş kayıt yok.</Text>}
+        ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+                <Text style={{fontSize: 40, marginBottom: 10}}>🕸️</Text>
+                <Text style={[styles.empty, { color: theme.emptyText }]}>Henüz bir arama yapmadın.</Text>
+            </View>
+        }
         renderItem={({ item }) => (
-          <View style={styles.item}>
-            <View>
-                <Text style={styles.text}>{item.summary}</Text>
-                <Text style={styles.date}>{item.date}</Text>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <View style={styles.cardHeader}>
+                <Text style={[styles.summary, { color: theme.text }]}>{item.summary}</Text>
+                <View style={styles.countBadge}>
+                    <Text style={styles.countText}>{item.count} Sonuç</Text>
+                </View>
             </View>
-            <View style={styles.badge}>
-                <Text style={styles.countText}>{item.count} Sonuç</Text>
-            </View>
+            <Text style={[styles.date, { color: theme.date }]}>📅 {item.date}</Text>
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f4f6f8' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#2c3e50' },
-  clearBtn: { color: '#e74c3c', fontWeight: 'bold' },
-  item: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
-  date: { fontSize: 12, color: '#95a5a6', marginTop: 4 },
-  text: { fontSize: 16, fontWeight: '600', color: '#34495e' },
-  badge: { backgroundColor: '#e8f6fd', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  countText: { fontSize: 12, color: '#3498db', fontWeight: 'bold' },
-  empty: { textAlign: 'center', marginTop: 50, color: '#95a5a6' }
+  container: { flex: 1, padding: 20 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 10 },
+  title: { fontSize: 24, fontWeight: 'bold' },
+  clearBtn: { backgroundColor: '#e74c3c', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  clearBtnText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
+  
+  card: { padding: 15, borderRadius: 15, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 3 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
+  summary: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: 10 },
+  countBadge: { backgroundColor: '#3498db', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  countText: { color: 'white', fontSize: 11, fontWeight: 'bold' },
+  date: { fontSize: 12, fontStyle: 'italic', marginTop: 5 },
+  
+  emptyContainer: { alignItems: 'center', marginTop: 100 },
+  empty: { fontSize: 16 }
 });
