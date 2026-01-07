@@ -1,7 +1,6 @@
 // src/data/openaiAPI.js
 
 
-// --- 1. FONKSİYON: İLK HEDİYE ÖNERİSİNİ BULMA ---
 export const getGiftSuggestion = async (gender, age, relation, budget, category, details) => {
   try {
     const isAdult = age > 17;

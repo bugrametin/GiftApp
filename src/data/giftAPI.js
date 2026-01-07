@@ -1,13 +1,12 @@
 
 
-
 export const fetchGiftsFromGoogle = async (query) => {
   try {
     // 1. Temizlik
     let baseQuery = query
       .replace(/['"()]/g, '')
       .replace(/öner/gi, '') 
-      .replace(/bul/gi, '')
+      .replace(/bul/gi, '') 
       .trim();
 
     // 2. Güvenilir Siteler

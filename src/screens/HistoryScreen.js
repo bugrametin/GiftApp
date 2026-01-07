@@ -1,25 +1,24 @@
-// src/screens/HistoryScreen.js
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HistoryScreen({ route, navigation }) {
-  // HomeScreen'den gelen darkMode bilgisini alıyoruz
   const { darkMode = false } = route.params || {};
   const [history, setHistory] = useState([]);
 
-  // Tema Ayarları
   const theme = {
-    bg: darkMode ? '#1e272e' : '#f4f6f8',
-    card: darkMode ? '#485460' : '#fff',
-    text: darkMode ? '#d2dae2' : '#2c3e50',
-    date: darkMode ? '#bdc3c7' : '#95a5a6',
-    emptyText: darkMode ? '#808e9b' : '#bdc3c7'
+    bgColors: darkMode ? ['#141E30', '#3b0f30ff'] : ['rgba(245, 134, 236, 1)', 'rgba(135, 240, 234, 1)'],
+    cardBg: darkMode ? '#2C3A47' : '#ffffff',
+    text: darkMode ? '#ecf0f1' : '#2d3436',
+    subText: darkMode ? '#bdc3c7' : '#636e72',
+    date: darkMode ? '#95a5a6' : '#a4b0be',
+    shadow: darkMode ? '#000' : '#e6be8a',
+    deleteBtn: '#e74c3c'
   };
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
+  useEffect(() => { loadHistory(); }, []);
 
   const loadHistory = async () => {
     const data = await AsyncStorage.getItem('history');
@@ -41,58 +40,77 @@ export default function HistoryScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      
-      {/* Üst Başlık ve Temizle Butonu */}
-      <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: theme.text }]}>📜 Son Aramalar</Text>
-          {history.length > 0 && (
-              <TouchableOpacity onPress={clearHistory} style={styles.clearBtn}>
-                  <Text style={styles.clearBtnText}>Temizle 🗑️</Text>
-              </TouchableOpacity>
-          )}
-      </View>
+    <LinearGradient colors={theme.bgColors} style={styles.container}>
+        <SafeAreaView style={{flex: 1}}>
+        
+        {/* ÖZEL HEADER */}
+        <View style={styles.customHeader}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <Ionicons name="chevron-back" size={28} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Geçmiş Aramalar</Text>
+            <View style={{width: 28}} /> 
+        </View>
 
-      <FlatList
-        data={history}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{paddingBottom: 20}}
-        ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-                <Text style={{fontSize: 40, marginBottom: 10}}>🕸️</Text>
-                <Text style={[styles.empty, { color: theme.emptyText }]}>Henüz bir arama yapmadın.</Text>
-            </View>
-        }
-        renderItem={({ item }) => (
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <View style={styles.cardHeader}>
-                <Text style={[styles.summary, { color: theme.text }]}>{item.summary}</Text>
-                <View style={styles.countBadge}>
-                    <Text style={styles.countText}>{item.count} Sonuç</Text>
+        {/* Alt Bilgi ve Temizle Butonu */}
+        <View style={styles.subHeaderRow}>
+            <Text style={{ color: theme.subText, fontSize: 13, flex: 1 }}>Önceki hediye fikirlerin.</Text>
+            {history.length > 0 && (
+                <TouchableOpacity onPress={clearHistory} style={[styles.clearBtn, { backgroundColor: theme.deleteBtn }]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                        <Ionicons name="trash-outline" size={16} color="white" style={{marginRight: 4}} />
+                        <Text style={styles.clearBtnText}>Temizle</Text>
+                    </View>
+                </TouchableOpacity>
+            )}
+        </View>
+
+        <FlatList
+            data={history}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{padding: 20}}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="time-outline" size={50} color={theme.subText} />
+                    <Text style={{ color: theme.subText, marginTop: 10 }}>Henüz geçmiş yok.</Text>
                 </View>
-            </View>
-            <Text style={[styles.date, { color: theme.date }]}>📅 {item.date}</Text>
-          </View>
-        )}
-      />
-    </SafeAreaView>
+            }
+            renderItem={({ item }) => (
+                <View style={[styles.card, { backgroundColor: theme.cardBg, shadowColor: theme.shadow }]}>
+                    <View style={styles.cardIcon}>
+                        <Ionicons name="gift" size={24} color="#f1c40f" />
+                    </View>
+                    <View style={{ flex: 1, paddingHorizontal: 12 }}>
+                        <Text style={[styles.summary, { color: theme.text }]}>{item.summary}</Text>
+                        <Text style={[styles.date, { color: theme.date }]}>{item.date}</Text>
+                    </View>
+                    <View style={styles.countBadge}>
+                        <Text style={styles.countText}>{item.count}</Text>
+                    </View>
+                </View>
+            )}
+        />
+        </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 10 },
-  title: { fontSize: 24, fontWeight: 'bold' },
-  clearBtn: { backgroundColor: '#e74c3c', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  container: { flex: 1 },
+  customHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingTop: 10, paddingBottom: 10 },
+  backBtn: { padding: 5 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  subHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 10 },
+  
+  clearBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
   clearBtnText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
   
-  card: { padding: 15, borderRadius: 15, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 3 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
-  summary: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: 10 },
-  countBadge: { backgroundColor: '#3498db', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  countText: { color: 'white', fontSize: 11, fontWeight: 'bold' },
-  date: { fontSize: 12, fontStyle: 'italic', marginTop: 5 },
-  
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  empty: { fontSize: 16 }
+  card: { flexDirection: 'row', padding: 16, borderRadius: 16, marginBottom: 14, alignItems: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 5, elevation: 3 },
+  cardIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(241, 196, 15, 0.15)', justifyContent:'center', alignItems:'center' },
+  summary: { fontSize: 15, fontWeight: '600' },
+  date: { fontSize: 12, marginTop: 4 },
+  countBadge: { backgroundColor: '#3498db', width: 35, height: 35, borderRadius: 10, justifyContent:'center', alignItems:'center' },
+  countText: { color: 'white', fontWeight: 'bold' },
+  emptyContainer: { alignItems: 'center', marginTop: 80 }
 });
